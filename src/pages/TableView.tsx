@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { format } from "date-fns";
-import { Plus, Edit, Trash } from "lucide-react";
+import { Plus, Edit, Trash, User } from "lucide-react";
 import { useTaskContext } from "@/context/TaskContext";
 import PageLayout from "@/components/layout/PageLayout";
 import TaskDialog from "@/components/tasks/TaskDialog";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Task } from "@/types/task";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const TableView = () => {
   const { tasks, deleteTask } = useTaskContext();
@@ -51,6 +51,15 @@ const TableView = () => {
     }
   };
 
+  const getInitials = (name?: string) => {
+    if (!name) return "UN";
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase();
+  };
+
   return (
     <PageLayout title="Table View">
       <div className="mb-6 flex justify-end">
@@ -68,6 +77,7 @@ const TableView = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -99,6 +109,18 @@ const TableView = () => {
                           {task.status === "todo" ? "To Do" : task.status === "in-progress" ? "In Progress" : "Done"}
                         </Badge>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {task.assigneeName ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback>{getInitials(task.assigneeName)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{task.assigneeName}</span>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">Unassigned</div>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Button
@@ -124,7 +146,7 @@ const TableView = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                     No tasks found. Click "Add Task" to create one.
                   </td>
                 </tr>
@@ -136,7 +158,7 @@ const TableView = () => {
 
       <TaskDialog
         open={dialogOpen}
-        setOpen={setDialogOpen}
+        onOpenChange={setDialogOpen}
         editingTask={editingTask}
       />
     </PageLayout>

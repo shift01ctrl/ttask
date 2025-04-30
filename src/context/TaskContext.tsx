@@ -34,6 +34,8 @@ const defaultTasks: Task[] = [
     priority: "low",
     status: "todo",
     createdAt: new Date().toISOString(),
+    assignedTo: "3",
+    assigneeName: "Bob Johnson",
   },
   {
     id: generateId(),
@@ -43,6 +45,8 @@ const defaultTasks: Task[] = [
     priority: "high",
     status: "todo",
     createdAt: new Date().toISOString(),
+    assignedTo: "2",
+    assigneeName: "Jane Smith",
   },
   {
     id: generateId(),
@@ -52,6 +56,8 @@ const defaultTasks: Task[] = [
     priority: "high",
     status: "todo",
     createdAt: new Date().toISOString(),
+    assignedTo: "1",
+    assigneeName: "John Doe",
   },
 ];
 
@@ -89,12 +95,16 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   }, [tasks]);
 
   const addTask = (task: Omit<Task, "id" | "createdAt">) => {
-    const newTask: Task = {
+    // Handle "unassigned" value for assignedTo
+    const finalTask: Task = {
       ...task,
       id: generateId(),
       createdAt: new Date().toISOString(),
+      assignedTo: task.assignedTo === "unassigned" ? undefined : task.assignedTo,
+      assigneeName: task.assignedTo === "unassigned" ? undefined : task.assigneeName,
     };
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+
+    setTasks((prevTasks) => [...prevTasks, finalTask]);
     toast({
       title: "Tâche ajoutée",
       description: `"${task.title}" a été ajoutée à vos tâches.`,
@@ -102,9 +112,16 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateTask = (taskId: string, updatedTask: Partial<Task>) => {
+    // Handle "unassigned" value for assignedTo
+    const finalUpdates = {
+      ...updatedTask,
+      assignedTo: updatedTask.assignedTo === "unassigned" ? undefined : updatedTask.assignedTo,
+      assigneeName: updatedTask.assignedTo === "unassigned" ? undefined : updatedTask.assigneeName,
+    };
+
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === taskId ? { ...task, ...updatedTask } : task
+        task.id === taskId ? { ...task, ...finalUpdates } : task
       )
     );
     toast({

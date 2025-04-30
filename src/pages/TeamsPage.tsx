@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -236,7 +235,7 @@ const TeamsPage = () => {
         </Dialog>
       </div>
       
-      {/* Add Member Dialog */}
+      {/* Add Member Dialog - Enhanced to match Users page style */}
       <Dialog open={isAddMemberDialogOpen} onOpenChange={(open) => {
         setIsAddMemberDialogOpen(open);
         if (!open) {
@@ -320,7 +319,7 @@ const TeamsPage = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Teams List */}
+      {/* Teams List - Enhanced to match Users page card style */}
       {teams.length > 0 ? (
         <div className="grid grid-cols-1 gap-6">
           {teams.map((team) => (
@@ -376,7 +375,8 @@ const TeamsPage = () => {
                             </Avatar>
                             <div>
                               <div className="font-medium">{user.name}</div>
-                              <div className="text-xs text-muted-foreground">{user.role}</div>
+                              <div className="text-xs text-muted-foreground">{user.email}</div>
+                              <div className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full mt-1">{user.role}</div>
                             </div>
                           </div>
                           <Button 

@@ -11,6 +11,9 @@ import { Task } from "@/types/task";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { translateToFrench } from "@/utils/translations";
+
+const t = translateToFrench;
 
 const SearchPage = () => {
   const location = useLocation();
@@ -80,18 +83,18 @@ const SearchPage = () => {
   };
 
   return (
-    <PageLayout title="Search Tasks 🔍">
+    <PageLayout title={t("Search Tasks 🔍")}>
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Task Search 🔎</CardTitle>
-          <CardDescription>Search for tasks by title or description</CardDescription>
+          <CardTitle>{t("Task Search 🔎")}</CardTitle>
+          <CardDescription>{t("Search for tasks by title or description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSearch} className="flex space-x-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search for tasks..."
+                placeholder={t("Search for tasks...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -106,14 +109,18 @@ const SearchPage = () => {
                 </button>
               )}
             </div>
-            <Button type="submit">Search</Button>
+            <Button type="submit">{t("Search")}</Button>
           </form>
         </CardContent>
       </Card>
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">{searchResults.length > 0 ? `Results (${searchResults.length})` : 'No results'}</h3>
+          <h3 className="text-lg font-medium">
+            {searchResults.length > 0 ? 
+              `${t("Results")} (${searchResults.length})` : 
+              t("No results")}
+          </h3>
         </div>
 
         {searchResults.length > 0 ? (
@@ -131,7 +138,7 @@ const SearchPage = () => {
                         ${task.status === 'done' ? 'bg-green-100 text-green-800' : ''}
                       `}
                     >
-                      {task.status} {getStatusEmoji(task.status)}
+                      {t(task.status)} {getStatusEmoji(task.status)}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -140,10 +147,10 @@ const SearchPage = () => {
                   <Separator className="my-2" />
                   <div className="flex justify-between items-center">
                     <Badge variant="outline" className="font-normal">
-                      {task.priority} {getPriorityEmoji(task.priority)}
+                      {t(task.priority)} {getPriorityEmoji(task.priority)}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
-                      Due: {format(new Date(task.dueDate), "MMM d, yyyy")} 📅
+                      {t("Due")}: {format(new Date(task.dueDate), "MMM d, yyyy")} 📅
                     </span>
                   </div>
                 </CardContent>
@@ -153,8 +160,8 @@ const SearchPage = () => {
         ) : searchTerm ? (
           <Card className="p-8 text-center">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-medium">No tasks found</h3>
-            <p className="text-muted-foreground mt-2">Try a different search term</p>
+            <h3 className="text-xl font-medium">{t("No tasks found")}</h3>
+            <p className="text-muted-foreground mt-2">{t("Try a different search term")}</p>
           </Card>
         ) : null}
       </div>

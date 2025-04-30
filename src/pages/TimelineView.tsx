@@ -7,6 +7,7 @@ import PageLayout from "@/components/layout/PageLayout";
 import TaskDialog from "@/components/tasks/TaskDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Task } from "@/types/task";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,15 @@ const TimelineView = () => {
     
     return grouped;
   }, [sortedTasks]);
+
+  const getInitials = (name?: string) => {
+    if (!name) return "UN";
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase();
+  };
 
   return (
     <PageLayout title="Timeline View">
@@ -151,6 +161,16 @@ const TimelineView = () => {
                             {format(new Date(task.dueDate), "h:mm a")}
                           </div>
                         </div>
+
+                        {/* Show assignee if exists */}
+                        {task.assigneeName && (
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback>{getInitials(task.assigneeName)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm text-gray-600">Assigned to: {task.assigneeName}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -169,7 +189,7 @@ const TimelineView = () => {
 
       <TaskDialog
         open={dialogOpen}
-        setOpen={setDialogOpen}
+        onOpenChange={setDialogOpen}
         editingTask={editingTask}
       />
     </PageLayout>
