@@ -95,14 +95,33 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   }, [tasks]);
 
   const addTask = (task: Omit<Task, "id" | "createdAt">) => {
-    // Handle "unassigned" value for assignedTo
+    // Handle unassigned value or clear assignments based on assignment type
     const finalTask: Task = {
       ...task,
       id: generateId(),
       createdAt: new Date().toISOString(),
-      assignedTo: task.assignedTo === "unassigned" ? undefined : task.assignedTo,
-      assigneeName: task.assignedTo === "unassigned" ? undefined : task.assigneeName,
     };
+
+    // Clear any irrelevant assignment fields based on assignment type
+    if (task.assignmentType === "user") {
+      finalTask.assignedToTeam = undefined;
+      if (task.assignedTo === "unassigned") {
+        finalTask.assignedTo = undefined;
+        finalTask.assigneeName = undefined;
+      }
+    } else if (task.assignmentType === "team") {
+      finalTask.assignedTo = undefined;
+      if (task.assignedToTeam === "unassigned") {
+        finalTask.assignedToTeam = undefined;
+        finalTask.assigneeName = undefined;
+      }
+    } else {
+      // No assignment
+      finalTask.assignedTo = undefined;
+      finalTask.assignedToTeam = undefined;
+      finalTask.assigneeName = undefined;
+      finalTask.assignmentType = undefined;
+    }
 
     setTasks((prevTasks) => [...prevTasks, finalTask]);
     toast({
@@ -112,16 +131,32 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateTask = (taskId: string, updatedTask: Partial<Task>) => {
-    // Handle "unassigned" value for assignedTo
-    const finalUpdates = {
-      ...updatedTask,
-      assignedTo: updatedTask.assignedTo === "unassigned" ? undefined : updatedTask.assignedTo,
-      assigneeName: updatedTask.assignedTo === "unassigned" ? undefined : updatedTask.assigneeName,
-    };
+    // Handle assignment type changes
+    const updates = { ...updatedTask };
+    
+    if (updates.assignmentType === "user") {
+      updates.assignedToTeam = undefined;
+      if (updates.assignedTo === "unassigned") {
+        updates.assignedTo = undefined;
+        updates.assigneeName = undefined;
+      }
+    } else if (updates.assignmentType === "team") {
+      updates.assignedTo = undefined;
+      if (updates.assignedToTeam === "unassigned") {
+        updates.assignedToTeam = undefined;
+        updates.assigneeName = undefined;
+      }
+    } else if (updates.assignmentType === undefined && 'assignedTo' in updates) {
+      // Legacy case - maintain backward compatibility
+      if (updates.assignedTo === "unassigned") {
+        updates.assignedTo = undefined;
+        updates.assigneeName = undefined;
+      }
+    }
 
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
-        task.id === taskId ? { ...task, ...finalUpdates } : task
+        task.id === taskId ? { ...task, ...updates } : task
       )
     );
     toast({

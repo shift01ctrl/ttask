@@ -3,9 +3,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { TaskProvider } from "./context/TaskContext";
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -28,11 +29,45 @@ const isAuthenticated = () => {
 };
 
 const LoadingScreen = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+  <motion.div 
+    className="min-h-screen flex flex-col items-center justify-center bg-background"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+  >
     <div className="loader"></div>
-    <p className="mt-4 text-lg text-foreground">Loading your dashboard...</p>
-  </div>
+    <p className="mt-4 text-lg text-foreground">Loading...</p>
+  </motion.div>
 );
+
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Auth Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        
+        {/* Protected Routes */}
+        <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/tasks" element={<PrivateRoute><CardView /></PrivateRoute>} />
+        <Route path="/calendar" element={<PrivateRoute><CalendarView /></PrivateRoute>} />
+        <Route path="/table" element={<PrivateRoute><TableView /></PrivateRoute>} />
+        <Route path="/timeline" element={<PrivateRoute><TimelineView /></PrivateRoute>} />
+        <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
+        <Route path="/teams" element={<PrivateRoute><TeamsPage /></PrivateRoute>} />
+        <Route path="/search" element={<PrivateRoute><SearchPage /></PrivateRoute>} />
+        <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+        
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +84,18 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
     return <LoadingScreen />;
   }
 
-  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" />;
+  return isAuthenticated() ? (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+    >
+      {children}
+    </motion.div>
+  ) : (
+    <Navigate to="/login" />
+  );
 };
 
 const queryClient = new QueryClient();
@@ -74,26 +120,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              {/* Auth Routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              
-              {/* Protected Routes */}
-              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              <Route path="/tasks" element={<PrivateRoute><CardView /></PrivateRoute>} />
-              <Route path="/calendar" element={<PrivateRoute><CalendarView /></PrivateRoute>} />
-              <Route path="/table" element={<PrivateRoute><TableView /></PrivateRoute>} />
-              <Route path="/timeline" element={<PrivateRoute><TimelineView /></PrivateRoute>} />
-              <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
-              <Route path="/teams" element={<PrivateRoute><TeamsPage /></PrivateRoute>} />
-              <Route path="/search" element={<PrivateRoute><SearchPage /></PrivateRoute>} />
-              <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
-              
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AnimatedRoutes />
           </BrowserRouter>
         </TaskProvider>
       </TooltipProvider>

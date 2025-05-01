@@ -9,5 +9,7 @@ export interface Task {
   status: "todo" | "in-progress" | "done";
   createdAt: string; // ISO string format
   assignedTo?: string; // User ID
-  assigneeName?: string; // User name (for display purposes)
+  assignedToTeam?: string; // Team ID
+  assignmentType?: "user" | "team" | "none"; // Updated to include "none"
+  assigneeName?: string; // User name or team name (for display purposes)
 }

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
-import { CalendarIcon, User } from "lucide-react";
+import { CalendarIcon, User, Users } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useTaskContext } from "@/context/TaskContext";
@@ -37,13 +37,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { translateToFrench } from "@/utils/translations";
 
-interface User {
+interface UserData {
   id: string;
   name: string;
   email: string;
   role: string;
   avatarUrl?: string;
+}
+
+interface TeamData {
+  id: string;
+  name: string;
+  description: string;
+  members: string[];
 }
 
 const taskSchema = z.object({
@@ -58,7 +66,9 @@ const taskSchema = z.object({
   status: z.enum(["todo", "in-progress", "done"], {
     required_error: "Status is required",
   }),
+  assignmentType: z.enum(["user", "team", "none"]).optional(),
   assignedTo: z.string().optional(),
+  assignedToTeam: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -72,11 +82,13 @@ interface TaskDialogProps {
 const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
   const { addTask, updateTask } = useTaskContext();
   const isEditing = !!editingTask;
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [teams, setTeams] = useState<TeamData[]>([]);
+  const [assignmentType, setAssignmentType] = useState<"user" | "team" | "none">("none");
 
-  // Load users from localStorage
+  // Load users and teams from localStorage
   useEffect(() => {
-    const loadUsers = () => {
+    const loadUsersAndTeams = () => {
       const savedUsers = localStorage.getItem("users");
       if (savedUsers) {
         try {
@@ -86,10 +98,35 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
           setUsers([]);
         }
       }
+
+      const savedTeams = localStorage.getItem("teams");
+      if (savedTeams) {
+        try {
+          setTeams(JSON.parse(savedTeams));
+        } catch (error) {
+          console.error("Failed to parse teams:", error);
+          setTeams([]);
+        }
+      }
     };
 
-    loadUsers();
+    loadUsersAndTeams();
   }, []);
+
+  // Set assignment type based on existing task
+  useEffect(() => {
+    if (editingTask) {
+      if (editingTask.assignedTo) {
+        setAssignmentType("user");
+      } else if (editingTask.assignedToTeam) {
+        setAssignmentType("team");
+      } else {
+        setAssignmentType("none");
+      }
+    } else {
+      setAssignmentType("none");
+    }
+  }, [editingTask]);
 
   const defaultValues: TaskFormValues = {
     title: "",
@@ -97,7 +134,9 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
     dueDate: new Date(),
     priority: "medium",
     status: "todo",
+    assignmentType: "none",
     assignedTo: "",
+    assignedToTeam: "",
   };
 
   const form = useForm<TaskFormValues>({
@@ -106,7 +145,11 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
       ? {
           ...editingTask,
           dueDate: new Date(editingTask.dueDate),
+          assignmentType: editingTask.assignmentType || 
+                        (editingTask.assignedTo ? "user" : 
+                         editingTask.assignedToTeam ? "team" : "none"),
           assignedTo: editingTask.assignedTo || "",
+          assignedToTeam: editingTask.assignedToTeam || "",
         }
       : defaultValues,
   });
@@ -115,15 +158,24 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
   useEffect(() => {
     if (open) {
       if (editingTask) {
+        const assignmentType = editingTask.assignmentType || 
+                             (editingTask.assignedTo ? "user" : 
+                              editingTask.assignedToTeam ? "team" : "none");
+        
+        setAssignmentType(assignmentType as "user" | "team" | "none");
+        
         form.reset({
           title: editingTask.title,
           description: editingTask.description,
           dueDate: new Date(editingTask.dueDate),
           priority: editingTask.priority,
           status: editingTask.status,
+          assignmentType: assignmentType as "user" | "team" | "none",
           assignedTo: editingTask.assignedTo || "",
+          assignedToTeam: editingTask.assignedToTeam || "",
         });
       } else {
+        setAssignmentType("none");
         form.reset(defaultValues);
       }
     }
@@ -137,18 +189,30 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
       .toUpperCase();
   };
 
-  const getUserById = (userId: string): User | undefined => {
+  const getUserById = (userId: string): UserData | undefined => {
     return users.find(user => user.id === userId);
   };
 
+  const getTeamById = (teamId: string): TeamData | undefined => {
+    return teams.find(team => team.id === teamId);
+  };
+
   const onSubmit = (data: TaskFormValues) => {
-    const assignedUser = data.assignedTo ? getUserById(data.assignedTo) : undefined;
+    let assigneeName;
+    
+    if (data.assignmentType === "user" && data.assignedTo && data.assignedTo !== "unassigned") {
+      const assignedUser = getUserById(data.assignedTo);
+      assigneeName = assignedUser?.name;
+    } else if (data.assignmentType === "team" && data.assignedToTeam && data.assignedToTeam !== "unassigned") {
+      const assignedTeam = getTeamById(data.assignedToTeam);
+      assigneeName = assignedTeam?.name;
+    }
     
     if (isEditing && editingTask) {
       updateTask(editingTask.id, {
         ...data,
         dueDate: data.dueDate.toISOString(),
-        assigneeName: assignedUser?.name,
+        assigneeName,
       });
     } else {
       addTask({
@@ -157,11 +221,28 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
         dueDate: data.dueDate.toISOString(),
         priority: data.priority,
         status: data.status,
-        assignedTo: data.assignedTo,
-        assigneeName: assignedUser?.name,
+        assignmentType: data.assignmentType,
+        assignedTo: data.assignmentType === "user" ? data.assignedTo : undefined,
+        assignedToTeam: data.assignmentType === "team" ? data.assignedToTeam : undefined,
+        assigneeName,
       });
     }
     onOpenChange(false);
+  };
+
+  const handleAssignmentTypeChange = (value: string) => {
+    setAssignmentType(value as "user" | "team" | "none");
+    form.setValue("assignmentType", value as "user" | "team" | "none");
+    
+    // Reset the other assignment field
+    if (value === "user") {
+      form.setValue("assignedToTeam", "");
+    } else if (value === "team") {
+      form.setValue("assignedTo", "");
+    } else {
+      form.setValue("assignedTo", "");
+      form.setValue("assignedToTeam", "");
+    }
   };
 
   return (
@@ -170,11 +251,11 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <DialogHeader>
-              <DialogTitle>{isEditing ? "Edit Task" : "Add New Task"}</DialogTitle>
+              <DialogTitle>{isEditing ? translateToFrench("Edit Task") : translateToFrench("Add New Task")}</DialogTitle>
               <DialogDescription>
                 {isEditing
-                  ? "Make changes to your task here"
-                  : "Create a new task to keep track of your work"}
+                  ? translateToFrench("Make changes to your task here")
+                  : translateToFrench("Create a new task to keep track of your work")}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -183,9 +264,9 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title</FormLabel>
+                    <FormLabel>{translateToFrench("Title")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Task title" {...field} />
+                      <Input placeholder={translateToFrench("Title")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -196,10 +277,10 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>{translateToFrench("Description")}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Task description"
+                        placeholder={translateToFrench("Description")}
                         className="resize-none"
                         {...field}
                       />
@@ -214,7 +295,7 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Due Date</FormLabel>
+                      <FormLabel>{translateToFrench("Due Date")}</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -228,7 +309,7 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                               {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
-                                <span>Pick a date</span>
+                                <span>{translateToFrench("Pick a date")}</span>
                               )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -253,17 +334,17 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>{translateToFrench("Priority")}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
+                            <SelectValue placeholder={translateToFrench("Select priority")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="low">{translateToFrench("Low")}</SelectItem>
+                          <SelectItem value="medium">{translateToFrench("Medium")}</SelectItem>
+                          <SelectItem value="high">{translateToFrench("High")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -277,17 +358,17 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>{translateToFrench("Status")}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder={translateToFrench("Select status")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="todo">To Do</SelectItem>
-                          <SelectItem value="in-progress">In Progress</SelectItem>
-                          <SelectItem value="done">Done</SelectItem>
+                          <SelectItem value="todo">{translateToFrench("To Do")}</SelectItem>
+                          <SelectItem value="in-progress">{translateToFrench("In Progress")}</SelectItem>
+                          <SelectItem value="done">{translateToFrench("Done")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -296,31 +377,33 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                 />
                 <FormField
                   control={form.control}
-                  name="assignedTo"
+                  name="assignmentType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Assign To</FormLabel>
+                      <FormLabel>{translateToFrench("Assigned To")}</FormLabel>
                       <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
+                        onValueChange={(value) => handleAssignmentTypeChange(value)} 
+                        value={assignmentType}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Assign to..." />
+                            <SelectValue placeholder={translateToFrench("Assign to...")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                </Avatar>
-                                <span>{user.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="none">{translateToFrench("Unassigned")}</SelectItem>
+                          <SelectItem value="user">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <span>{translateToFrench("Assign to User")}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="team">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              <span>{translateToFrench("Assign to Team")}</span>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -328,12 +411,95 @@ const TaskDialog = ({ open, onOpenChange, editingTask }: TaskDialogProps) => {
                   )}
                 />
               </div>
+              
+              {/* Conditional rendering based on assignment type */}
+              {assignmentType === "user" && (
+                <FormField
+                  control={form.control}
+                  name="assignedTo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{translateToFrench("User")}</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={translateToFrench("Select a user")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {users.length > 0 ? (
+                            users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                                  </Avatar>
+                                  <span>{user.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-users" disabled>
+                              {translateToFrench("No users available")}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {assignmentType === "team" && (
+                <FormField
+                  control={form.control}
+                  name="assignedToTeam"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{translateToFrench("Team")}</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={translateToFrench("Select a team")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {teams.length > 0 ? (
+                            teams.map((team) => (
+                              <SelectItem key={team.id} value={team.id}>
+                                <div className="flex items-center gap-2">
+                                  <Users className="h-4 w-4 text-primary" />
+                                  <span>{team.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-teams" disabled>
+                              {translateToFrench("No teams available")}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
-                Cancel
+                {translateToFrench("Cancel")}
               </Button>
-              <Button type="submit">{isEditing ? "Save Changes" : "Create Task"}</Button>
+              <Button type="submit">
+                {isEditing ? translateToFrench("Save Changes") : translateToFrench("Create Task")}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

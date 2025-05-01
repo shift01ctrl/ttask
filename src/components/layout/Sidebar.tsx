@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   CalendarDays, LayoutGrid, Table, List, 
   LogOut, Settings, Search, Users, UserPlus, 
-  Home, PanelLeft
+  Home, PanelLeft, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,18 @@ import {
   SidebarProvider, 
   SidebarRail, 
   SidebarTrigger, 
+  useSidebar 
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { translateToFrench } from "@/utils/translations";
 
 export function AppSidebar() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
+  const { state } = useSidebar();
   
   // Get user initials for avatar
   const username = localStorage.getItem("username") || "User";
@@ -41,7 +44,7 @@ export function AppSidebar() {
 
   const handleSignOut = () => {
     localStorage.setItem("isAuthenticated", "false");
-    toast.success("Signed out successfully");
+    toast.success(translateToFrench("Signed out successfully! 👋"));
     navigate("/login");
   };
 
@@ -49,47 +52,47 @@ export function AppSidebar() {
     {
       to: "/",
       icon: <Home className="w-5 h-5" />,
-      label: "Dashboard 📊",
+      label: translateToFrench("Dashboard"),
     },
     {
       to: "/tasks",
       icon: <LayoutGrid className="w-5 h-5" />,
-      label: "Tasks 📝",
+      label: translateToFrench("Tasks"),
     },
     {
       to: "/calendar",
       icon: <CalendarDays className="w-5 h-5" />,
-      label: "Calendar 📅",
+      label: translateToFrench("Calendar"),
     },
     {
       to: "/table",
       icon: <Table className="w-5 h-5" />,
-      label: "Table 📋",
+      label: translateToFrench("Table"),
     },
     {
       to: "/timeline",
       icon: <List className="w-5 h-5" />,
-      label: "Timeline ⏱️",
+      label: translateToFrench("Timeline"),
     },
     {
       to: "/users",
       icon: <Users className="w-5 h-5" />,
-      label: "Users 👥",
+      label: translateToFrench("Users"),
     },
     {
       to: "/teams",
       icon: <UserPlus className="w-5 h-5" />,
-      label: "Teams 👪",
+      label: translateToFrench("Teams"),
     },
     {
       to: "/search",
       icon: <Search className="w-5 h-5" />,
-      label: "Search 🔍",
+      label: translateToFrench("Search"),
     },
     {
       to: "/settings",
       icon: <Settings className="w-5 h-5" />,
-      label: "Settings ⚙️",
+      label: translateToFrench("Settings"),
     },
   ];
 
@@ -110,9 +113,14 @@ export function AppSidebar() {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <h3 className="font-medium text-lg">TaskVista</h3>
-              <p className="text-sm text-muted-foreground">Welcome, {username}! 👋</p>
+            <div className="flex items-center gap-2">
+              <div className="bg-primary p-1 rounded-md animate-pulse">
+                <Sparkles className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h3 className="font-medium text-lg">TaskVista</h3>
+                <p className="text-sm text-muted-foreground">{translateToFrench("Welcome")}, {username}! 👋</p>
+              </div>
             </div>
           </div>
           <SidebarTrigger />
@@ -122,7 +130,7 @@ export function AppSidebar() {
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search tasks..."
+              placeholder={translateToFrench("Search tasks...")}
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -157,7 +165,7 @@ export function AppSidebar() {
           className="w-full gap-2"
         >
           <LogOut className="w-4 h-4" />
-          Sign Out 👋
+          {translateToFrench("Sign Out")}
         </Button>
       </SidebarFooter>
       <SidebarRail />
@@ -165,13 +173,22 @@ export function AppSidebar() {
   );
 }
 
-export function SidebarWrapper({ children }: { children: React.ReactNode }) {
+// SidebarContext consumer wrapper component
+function SidebarConsumer({ children }: { children: (props: { toggleSidebar: () => void; state: "expanded" | "collapsed" }) => React.ReactNode }) {
+  const { toggleSidebar, state } = useSidebar();
+  return children({ toggleSidebar, state });
+}
+
+// Updated SidebarWrapper to use the consumer
+export function SidebarWrapper({ children }: { children: (props: { toggleSidebar: () => void; state: "expanded" | "collapsed" }) => React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex-1 overflow-auto">
-          {children}
+          <SidebarConsumer>
+            {children}
+          </SidebarConsumer>
         </div>
       </div>
     </SidebarProvider>

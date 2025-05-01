@@ -166,3 +166,66 @@
     transform: scale(0.95);
   }
 }
+
+/* Page transition animations */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Sparkle animation for logo */
+.sparkle {
+  position: relative;
+  display: inline-block;
+}
+
+.sparkle::before,
+.sparkle::after {
+  content: "";
+  position: absolute;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  animation: sparkle 2s infinite;
+}
+
+.sparkle::before {
+  width: 6px;
+  height: 6px;
+  top: -10px;
+  left: 50%;
+}
+
+.sparkle::after {
+  width: 4px;
+  height: 4px;
+  top: 5px;
+  left: -8px;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
